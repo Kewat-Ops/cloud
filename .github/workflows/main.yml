@@ -152,7 +152,7 @@ jobs:
 
       - name: Performing demo
         run: |
-        apt update
+        apt-get update
         echo "Performing demo.Please hold on...."
 
 

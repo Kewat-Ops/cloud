@@ -75,10 +75,10 @@ jobs:
         run: |
           echo "Raw data is building..."
           mkdir build
-          echo "logs are writing in build jobs..." > logs/build.log
-          echo "\nBranch: ${{ github.ref }}" >> logs/build.log
-          echo "\nCommit: ${{ github.sha }}" >> logs/build.log
-          echo "\nView-logs: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}" >> logs/build.log
+          echo "logs are writing in build jobs..." > build/build.log
+          echo "\nBranch: ${{ github.ref }}" >> build/build.log
+          echo "\nCommit: ${{ github.sha }}" >> build/build.log
+          echo "\nView-logs: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}" >> build/build.log
 
 # uploading build artifact
       - name: uploading build artifact

@@ -1,0 +1,180 @@
+name: upto phase 4
+
+on:
+  push:
+    branches: [bhanja]
+
+jobs:
+
+  install: #installing dependencies
+    runs-on: ubuntu-latest
+    env:
+      DB_HOST: ${{ secrets.DB_HOST }}
+      DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
+    steps:
+      - uses: actions/checkout@v4
+
+# caching dependencies before installation for speed
+      - name: for npm
+        uses: actions/cache@v4
+        with:
+          path: ~/.npm
+          key: ${{ runner.os }}-node-${{hashFiles('**/package-lock.json')}}
+          restore-keys: ${{ runner.os }}-node-
+
+      - name: for go
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/go/pkg/mod
+            ~/.cache/go-build
+          key: ${{ runner.os }}-go-${{hashFiles('**/go.sum')}}
+          restore-keys: ${{ runner.os }}-go-
+
+#installing dependencies
+      - name: installing npm
+        run: npm install
+
+
+
+
+  lint: # linting codes for standard
+    runs-on: ubuntu-latest
+    needs: [install]
+    env:
+      DB_HOST: ${{ secrets.DB_HOST }}
+      DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: installing static check
+        run: |
+          go install honnef.co/go/tools/cmd/staticcheck@latest
+          echo "$HOME/go/bin" >> $GITHUB_PATH
+
+      - name: linting codes
+        run: |
+         npm run lint
+         staticcheck ./...
+
+      - name: send message
+        if: failure()
+        run: echo "Installation failed.."
+
+
+  build: # building raw data
+    runs-on: ubuntu-latest
+    needs: [install, lint]
+    env:
+      DB_HOST: ${{ secrets.DB_HOST }}
+      DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: building codes
+        run: |
+          echo "Raw data is building..."
+          mkdir logs
+          echo "logs are writing in build jobs..." > logs/build.log
+          echo "\nBranch: ${{ github.ref }}" >> logs/build.log
+          echo "\nCommit: ${{ github.sha }}" >> logs/build.log
+          echo "\nView-logs: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}" >> logs/build.log
+
+# uploading build artifact
+      - name: uploading build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: build artifact
+          path: logs/build.log
+
+      - name: send message
+        if: failure()
+        run: echo " uploading artifact failed..."
+
+
+  test: #testing code
+    runs-on: ubuntu-latest
+    needs: [install, lint, build]
+    env:
+      DB_HOST: ${{ secrets.DB_HOST }}
+      DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
+      SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: testing codes
+        run: echo " Testing on progress..."
+
+# using slack for sending notification to team
+      - name: sending notification to team on failure
+        uses: slackapi/slack-github-action@v1.27.0
+        with:
+          payload: |
+            {
+               "blocks": [
+                 {
+                    "type": "section",
+                    "text": {
+                    "type": "mrkdwn",
+                    "text": " Testing has been failed on:\nBranch: ${{ github.ref }}\nCommit: ${{ github.sha }}\nView-Logs: ${{ github.server_url}}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+                   }
+                 }
+              ]
+            }
+
+  deploy: # deploying builded code
+    runs-on: ubuntu-latest
+    needs: [install, lint, build, test]
+    env:
+      DB_HOST: ${{ secrets.DB_HOST }}
+      DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: deploying codes
+        run: echo "codes are deploying..."
+
+# downloding build artifacts
+      - name: downloading build artifact for deploy
+        uses: actions/download-artifact@v4
+        with:
+          name: build artifact
+          path: logs/downloaded-artifact
+
+  demo: # hands on hands user testing
+    runs-on: ubuntu-latest
+    needs: [install, lint, build, test, deploy]
+    env:
+      DB_HOST: ${{ secrets.DB_HOST }}
+      DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Performing demo
+        run: |
+        apt update
+        echo "Performing demo.Please hold on...."
+
+
+  alert: # sending notification to team on failure
+    runs-on: ubuntu-latest
+    needs: [install, lint, build, test, deploy, demo]
+    env:
+      EMAIL_USERNAME: ${{ secrets.EMAIL_USERNAME }}
+      EMAIL_PASSWORD: ${{ secrets.EMAIL_PASSWORD }}
+    if: failure()
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: sending E-mail to entire team on failure
+        uses: dawidd6/action-send-mail@v3
+        with:
+          server_address: smtp.gmail.com
+          server_ports: 465
+          secure: true
+          username: ${{ secrets.EMAIL_USERNAME }}
+          password: ${{ secrets.EMAIL_PASSWORD }}
+          from: manager@company.com
+          subject: "CICD pipeline failed on:\n${{ github.repository }}"
+          body: "pipeline has been failed on:\nBranch: ${{ github.ref }}\nCommit: ${{ github.sha }}\nView-log: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+          to: devloper@company.com

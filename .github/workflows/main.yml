@@ -114,10 +114,12 @@ jobs:
 
 # using slack for sending notification to team
       - name: sending notification to team on failure
+        #if: failure()
         uses: slackapi/slack-github-action@v1.27.0
         with:
           payload: |
             {
+               "text": "Deployment failed on:\nBranch: ${{ github.ref }}",
                "blocks": [
                  {
                     "type": "section",

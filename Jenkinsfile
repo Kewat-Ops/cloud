@@ -17,7 +17,7 @@ pipeline {
         stage('Host-Info') {
             steps {
                 sh '''
-                kubectl version --short
+                kubectl version -o yaml
                 hostname
                 whoami
                 pwd

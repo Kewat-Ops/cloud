@@ -1,0 +1,12 @@
+scrape_configs:
+  - job_name: 'python'
+    static_configs:
+      - targets: ['python-service:5000']
+
+  - job_name: 'node'
+    static_configs:
+      - targets: ['node-service:4000']
+
+  - job_name: 'go'
+    static_configs:
+      - targets: ['go-service:8000']

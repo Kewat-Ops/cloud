@@ -1,0 +1,213 @@
+name: docker-build-push
+
+#on:
+  #push:
+    #branches: [srijan]
+
+jobs:
+
+  docker-build-push:
+    runs-on: self-hosted
+
+    steps:
+      - uses: actions/checkout@v6
+
+      #setup python with caching
+      - name: Installing python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.14.x'
+          cache: 'pip'
+          cache-dependency-path: python-dir/requirements.txt
+
+     #setup node with caching
+      - name: Installing node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: 'npm'
+          cache-dependency-path: node-dir/package-lock.json
+
+      #setup go with cache
+      - name: Installing go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.25.x'
+          cache: false
+
+      - name: show go cache location
+        run: |
+          go env GOMODCACHE GOCACHE
+
+      - name: Downloading go module
+        working-directory: ./go-dir
+        run: |
+          go mod download
+
+      - name: Build
+        working-directory: ./go-dir
+        run: |
+          go build ./...
+
+# setting up for docker qemu action
+      #- name: setup QEMU action
+        #uses: docker/setup-qemu-action@v3
+        #with:
+          #platforms: linux/amd64, linux/arm64
+
+# setting docker buildx
+      - name: setup buildx
+        uses: docker/setup-buildx-action@v2
+
+# setting docker login environments
+      - name: docker login environment setup
+        uses: docker/login-action@v2
+        with:
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
+
+
+
+#**********python**************
+
+
+
+# setting docker build-push environment
+      - name: setting build-push python environment
+        uses: docker/build-push-action@v4
+        with:
+          context: ./python-dir
+          file: ./python-dir/dockerfile-python
+          push: true
+          load: true
+          tags: |
+            ${{ secrets.DOCKER_USERNAME }}/cloud-python:latest
+            ${{ secrets.DOCKER_USERNAME }}/cloud-python:${{ github.sha }}
+
+          cache-from: type=local,src=/home/python/.buildx-cache/python
+          cache-to: type=local,dest=/home/python/.buildx-cache/python,mode=max
+
+          platforms: linux/amd64
+
+# scanning python images with trivy
+      - name: scanning python image
+        uses: aquasecurity/trivy-action@v0.2.0
+        with:
+         image-ref: ${{ secrets.DOCKER_USERNAME }}/cloud-python:latest
+         severity: HIGH,CRITICAL
+         vuln-type: os,library
+         format: table
+         ignore-unfixed: true
+         exit-code: '1'
+
+# testing python container for stable image
+      - name: Testing python container
+        run: |
+          #docker run --rm ${{ secrets.DOCKER_USERNAME }}/cloud-python:latest pytest
+          cd python-dir
+          pip install pytest
+          pytest tests
+
+# promoting python stables images
+      - name: promoting stable images
+        if: success()
+        run: |
+          docker tag ${{ secrets.DOCKER_USERNAME }}/cloud-python:latest ${{ secrets.DOCKER_USERNAME }}/cloud-python:stable
+          docker push ${{ secrets.DOCKER_USERNAME }}/cloud-python:stable
+
+
+
+
+#*********Node**************
+
+
+
+# setting docker build-push environment
+      - name: setting build-push node environment
+        uses: docker/build-push-action@v4
+        with:
+          context: ./node-dir
+          file: ./node-dir/dockerfile-node
+          push: true
+          load: true
+          tags: |
+            ${{ secrets.DOCKER_USERNAME }}/cloud-node:latest
+            ${{ secrets.DOCKER_USERNAME }}/cloud-node:${{ github.sha }}
+
+          cache-from: type=local,src=/home/python/.buildx-cache/node
+          cache-to: type=local,dest=/home/python/.buildx-cache/node,mode=max
+
+          platforms: linux/amd64
+
+# scanning python images with trivy
+      - name: scanning node image
+        uses: aquasecurity/trivy-action@v0.2.0
+        with:
+         image-ref: ${{ secrets.DOCKER_USERNAME }}/cloud-node:latest
+         severity: HIGH,CRITICAL
+         vuln-type: os,library
+         format: table
+         ignore-unfixed: true
+         exit-code: '1'
+
+# testing node container for stable image
+      - name: Testing node container
+        run: |
+          #docker run --rm ${{ secrets.DOCKER_USERNAME }}/cloud-node:latest npm test
+          cd node-dir
+          npm test
+# promoting node stables images
+      - name: promoting node stable images
+        if: success()
+        run: |
+          docker tag ${{ secrets.DOCKER_USERNAME }}/cloud-node:latest ${{ secrets.DOCKER_USERNAME }}/cloud-node:stable
+          docker push ${{ secrets.DOCKER_USERNAME }}/cloud-node:stable
+
+
+
+
+
+#*********GO**************
+
+
+
+# setting docker build-push environment
+      - name: setting build-push go environment
+        uses: docker/build-push-action@v4
+        with:
+          context: ./go-dir
+          file: ./go-dir/dockerfile-go
+          push: true
+          load: true
+          tags: |
+            ${{ secrets.DOCKER_USERNAME }}/cloud-go:latest
+            ${{ secrets.DOCKER_USERNAME }}/cloud-go:${{ github.sha }}
+
+          cache-from: type=local,src=/home/python/.buildx-cache/go
+          cache-to: type=local,dest=/home/python/.buildx-cache/go,mode=max
+
+          platforms: linux/amd64
+
+# scanning go images with trivy
+      - name: scanning go image
+        uses: aquasecurity/trivy-action@v0.2.0
+        with:
+         image-ref: ${{ secrets.DOCKER_USERNAME }}/cloud-go:latest
+         severity: HIGH,CRITICAL
+         vuln-type: os,library
+         format: table
+         ignore-unfixed: true
+         exit-code: '1'
+
+# testing go container for stable image
+      - name: Testing go container
+        run: |
+          #docker run --rm ${{ secrets.DOCKER_USERNAME }}/cloud-go:latest go test ./...
+          cd go-dir
+          go test ./...
+# promoting go stables images
+      - name: promoting go stable images
+        if: success()
+        run: |
+          docker tag ${{ secrets.DOCKER_USERNAME }}/cloud-go:latest ${{ secrets.DOCKER_USERNAME }}/cloud-go:stable
+          docker push ${{ secrets.DOCKER_USERNAME }}/cloud-go:stable

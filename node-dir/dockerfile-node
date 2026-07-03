@@ -1,0 +1,18 @@
+#stage 1- builder
+FROM node:24-alpine as builder
+WORKDIR /docker-project
+COPY package*.json .
+RUN npm install
+COPY . .
+
+#stage 2 - Runtime
+FROM node:24-alpine           
+WORKDIR /docker-project
+COPY --from=builder /docker-project .
+RUN apk add curl
+COPY . .    
+CMD ["node", "index.js"]
+
+# healthcheck definition
+HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
+  CMD curl -f http://localhost:4000/health || exit 1

@@ -21,6 +21,7 @@ pipeline {
                 hostname
                 whoami
                 pwd
+                ls
                 '''
             }
         }

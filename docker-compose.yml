@@ -1,4 +1,4 @@
-   #  for intra-services
+    #  for intra-services
 networks:
   devops-net:
     driver: overlay

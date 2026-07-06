@@ -1,41 +1,37 @@
 #------python----
-
 apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: python
   labels:
     app: python-app
-# specification for (wrapper)pods
+# specification for pods (wrapper)
 spec:
   replicas: 2
   selector:
-    matchlabels:
+    matchLabels:
       app: python-app
-  #blueprint of pods
+  #blueprints for pods
   template:
     metadata:
-    labels:
-      app: python-app
-  #specification of container
-  spec:
-    containers:
-      - name: python-container
-        image: $DOCKER_CREDS_USR/cloud-python:latest
-        ports:
-          - containerport: 5000
-
+      labels:
+        app: python-app
+    spec:
+      containers:
+        - name: python-container
+          image: $DOCKER_CREDS_USR/cloud-python:latest
+          ports:
+            - containerPort: 5000
 ---
 apiVersion: v1
-kind: services
+kind: Service
 metadata:
   name: python-services
 spec:
-  slector:
-    matchlabels:
-      app: python-app
+  selector:
+    app: python-app
   ports:
     - protocol: TCP
       port: 80
-      targetport: 5000
+      targetPort: 5000
   type: ClusterIP

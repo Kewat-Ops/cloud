@@ -33,14 +33,20 @@ pipeline {
                 '''
                 sh '''
                 docker build -t $DOCKER_CREDS_USR/cloud-python:latest ./python-dir -f ./python-dir/dockerfile-python
+                '''
+                sh '''
                 docker push $DOCKER_CREDS_USR/cloud-python:latest
                 '''
                 sh '''
                 docker build -t $DOCKER_CREDS_USR/cloud-node:latest ./node-dir -f ./node-dir/dockerfile-node
+                '''
+                sh '''
                 docker push $DOCKER_CREDS_USR/cloud-node:latest
                 '''
                 sh '''
                 docker build -t $DOCKER_CREDS_USR/cloud-go:latest ./go-dir -f ./go-dir/dockerfile-go
+                '''
+                sh '''
                 docker push $DOCKER_CREDS_USR/cloud-go:latest
                 '''
             }
@@ -48,9 +54,9 @@ pipeline {
 
         stage('Image Scanning') {
             steps {
-                sh 'trivy image $DOCKER_CREDS_USR/cloud-python:latest --severity HIGH,CRITICAL --ignore-unfixed --exit-code 1 || true'
-                sh 'trivy image $DOCKER_CREDS_USR/cloud-node:latest --severity HIGH,CRITICAL --ignore-unfixed --exit-code 1 || true'
-                sh 'trivy image $DOCKER_CREDS_USR/cloud-go:latest --severity HIGH,CRITICAL --ignore-unfixed --exit-code 1 || true'
+                sh 'trivy image $DOCKER_CREDS_USR/cloud-python:latest --severity HIGH,CRITICAL --format table --ignore-unfixed --exit-code 1 || true'
+                sh 'trivy image $DOCKER_CREDS_USR/cloud-node:latest --severity HIGH,CRITICAL --format table --ignore-unfixed --exit-code 1 || true'
+                sh 'trivy image $DOCKER_CREDS_USR/cloud-go:latest --severity HIGH,CRITICAL --format table --ignore-unfixed --exit-code 1 || true'
             }
         }
 
@@ -61,20 +67,26 @@ pipeline {
                 '''
                 sh '''
                 docker tag $DOCKER_CREDS_USR/cloud-python:latest $DOCKER_CREDS_USR/cloud-python:stable
+                '''
+                sh '''
                 docker push $DOCKER_CREDS_USR/cloud-python:stable
                 '''
                 sh '''
-                cd ../node-dir && npm install && npm test
+                cd node-dir && npm install && npm test
                 '''
                 sh '''
                 docker tag $DOCKER_CREDS_USR/cloud-node:latest $DOCKER_CREDS_USR/cloud-node:stable
+                '''
+                sh '''
                 docker push $DOCKER_CREDS_USR/cloud-node:stable
                 '''
                 sh '''
-                cd ../go-dir && go test ./...
+                cd go-dir && go test ./...
                 '''
                 sh '''
                 docker tag $DOCKER_CREDS_USR/cloud-go:latest $DOCKER_CREDS_USR/cloud-go:stable
+                '''
+                sh '''
                 docker push $DOCKER_CREDS_USR/cloud-go:stable
                 '''
             }

@@ -19,7 +19,7 @@ spec:
     spec:
       containers:
         - name: python-container
-          image: $DOCKER_CREDS_USR/cloud-python:latest
+          image: cdipesh/cloud-python:latest
           ports:
             - containerPort: 5000
 ---

@@ -97,6 +97,7 @@ pipeline {
                 sh '''
                 echo "Applying Kubernetes manifests..."
                 kubectl apply -f kubernets.yml
+                kubectl apply -f nginx-configmap.yml
                 '''
             }
         }
